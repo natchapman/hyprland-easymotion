@@ -16,7 +16,7 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
 }
 
 
-void easymotionExitDispatch(std::string args)
+SDispatchResult easymotionExitDispatch(std::string args)
 {
 		for (auto &ml : g_pGlobalState->motionLabels | std::ranges::views::reverse) {
 			ml->getOwner()->removeWindowDeco(ml);
@@ -24,9 +24,11 @@ void easymotionExitDispatch(std::string args)
 		HyprlandAPI::invokeHyprctlCommand("dispatch", "submap reset");
 		g_pEventManager->postEvent(SHyprIPCEvent{"easymotionexit", ""});
 
+    return {};
+
 }
 
-void easymotionActionDispatch(std::string args)
+SDispatchResult easymotionActionDispatch(std::string args)
 {
 	for (auto &ml : g_pGlobalState->motionLabels) {
 		if (ml->m_szLabel == args) {
@@ -36,6 +38,8 @@ void easymotionActionDispatch(std::string args)
 			break;
 		}
 	}
+
+  return {};
 }
 
 void addEasyMotionKeybinds()
@@ -85,7 +89,7 @@ static bool parseBorderGradient(std::string VALUE, CGradientValueData *DATA) {
         }
 
         try {
-            DATA->m_vColors.push_back(CColor(configStringToInt(var).value_or(0)));
+            DATA->m_vColors.push_back(CHyprColor(configStringToInt(var).value_or(0)));
         } catch (std::exception& e) {
             Debug::log(WARN, "Error parsing gradient {}", V);
         }
@@ -99,7 +103,7 @@ static bool parseBorderGradient(std::string VALUE, CGradientValueData *DATA) {
     return true;
 }
 
-void easymotionDispatch(std::string args)
+SDispatchResult easymotionDispatch(std::string args)
 {
 		static auto *const TEXTSIZE = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:easymotion:textsize")->getDataStaticPtr();
 
@@ -139,9 +143,9 @@ void easymotionDispatch(std::string args)
 		} else if (kv[0] == "textsize") {
 			actionDesc.textSize = configStringToInt(kv[1]).value_or(15);
 		} else if (kv[0] == "textcolor") {
-			actionDesc.textColor = CColor(configStringToInt(kv[1]).value_or(0xffffffff));
+			actionDesc.textColor = CHyprColor(configStringToInt(kv[1]).value_or(0xffffffff));
 		} else if (kv[0] == "bgcolor") {
-			actionDesc.backgroundColor = CColor(configStringToInt(kv[1]).value_or(0));
+			actionDesc.backgroundColor = CHyprColor(configStringToInt(kv[1]).value_or(0));
 		} else if (kv[0] == "textfont") {
 			actionDesc.textFont = kv[1];
 		} else if (kv[0] == "textpadding") {
@@ -172,6 +176,7 @@ void easymotionDispatch(std::string args)
 					if (w->isHidden() || !w->m_bIsMapped || w->m_bFadingOut)
 						continue;
                     if (w->m_pWorkspace->m_bHasFullscreenWindow && 
+
                         w->m_pWorkspace->getFullscreenWindow() != w) {
                         continue;
                     }
@@ -183,6 +188,8 @@ void easymotionDispatch(std::string args)
 
 	if (!g_pGlobalState->motionLabels.empty())
 		HyprlandAPI::invokeHyprctlCommand("dispatch", "submap __easymotionsubmap__");
+
+  return {};
 }
 	
 bool oneasymotionKeypress(void *self, std::any data) {
@@ -232,9 +239,9 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
 
 		g_pGlobalState = std::make_unique<SGlobalState>();
-		HyprlandAPI::addDispatcher(PHANDLE, "easymotion", easymotionDispatch);
-		HyprlandAPI::addDispatcher(PHANDLE, "easymotionaction", easymotionActionDispatch);
-		HyprlandAPI::addDispatcher(PHANDLE, "easymotionexit", easymotionExitDispatch);
+		HyprlandAPI::addDispatcherV2(PHANDLE, "easymotion", easymotionDispatch);
+		HyprlandAPI::addDispatcherV2(PHANDLE, "easymotionaction", easymotionActionDispatch);
+		HyprlandAPI::addDispatcherV2(PHANDLE, "easymotionexit", easymotionExitDispatch);
 		static auto KPHOOK = HyprlandAPI::registerCallbackDynamic(PHANDLE, "keyPress", [&](void *self, SCallbackInfo &info, std::any data) {
 			info.cancelled = oneasymotionKeypress(self, data);
 	});
